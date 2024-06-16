@@ -3,6 +3,7 @@ package com.handelsbank.ecommerceApi.controllers;
 import com.handelsbank.ecommerceApi.exceptions.CustomMessage;
 import com.handelsbank.ecommerceApi.exceptions.NoItemsToCheckoutException;
 import com.handelsbank.ecommerceApi.services.CheckoutService;
+import com.handelsbank.ecommerceApi.aop.RateLimit;
 import com.handelsbank.ecommerceApi.utilities.Validator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +30,7 @@ public class CheckoutController {
     }
 
     @PostMapping("/checkout")
+    @RateLimit(requests = 5, duration = 3000)
     public ResponseEntity<?> checkout(@RequestBody List<Long> productIds) {
         logger.info("Checking out with product IDs: {}", productIds);
         // Validate product IDs over engineering ? check this part
