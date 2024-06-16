@@ -4,6 +4,7 @@ import com.handelsbank.ecommerceApi.entities.DiscountEntity;
 import com.handelsbank.ecommerceApi.entities.ProductEntity;
 import com.handelsbank.ecommerceApi.repository.DiscountRepository;
 import com.handelsbank.ecommerceApi.repository.ProductRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -32,7 +33,8 @@ public class CheckoutService {
 
         BigDecimal totalPrice = BigDecimal.valueOf(0);
         for (Map.Entry<Long, Integer> entry : countMap.entrySet()) {
-            ProductEntity product = productRepository.findById(entry.getKey()).orElse(null);
+            ProductEntity product = productRepository.findById(entry.getKey())
+                    .orElseThrow(() -> new EntityNotFoundException("Product with ID " + entry.getKey() + " not found."));
             if (product == null) continue;
             List<DiscountEntity> discounts = discountRepository.findByProductId(product.getId());
             long count = entry.getValue();
