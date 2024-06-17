@@ -1,10 +1,13 @@
 package com.handelsbank.ecommerceApi.services;
 
+import com.handelsbank.ecommerceApi.controllers.CheckoutController;
 import com.handelsbank.ecommerceApi.entities.DiscountEntity;
 import com.handelsbank.ecommerceApi.entities.ProductEntity;
 import com.handelsbank.ecommerceApi.repository.DiscountRepository;
 import com.handelsbank.ecommerceApi.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -15,6 +18,7 @@ import java.util.stream.Collectors;
 @Service
 public class CheckoutService {
 
+    private static final Logger logger = LoggerFactory.getLogger(CheckoutService.class);
     private final ProductRepository productRepository;
     private final DiscountRepository discountRepository;
 
@@ -24,6 +28,7 @@ public class CheckoutService {
     }
 
     public BigDecimal calculateTotalPrice(List<Long> productIds) {
+        logger.info("Calculating total price for products with IDs: {}", productIds);
         Map<Long, Integer> countMap = productIds.stream()
                 .collect(Collectors.toMap(
                         e -> e,
