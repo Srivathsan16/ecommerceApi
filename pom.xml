@@ -63,12 +63,10 @@
 			<version>${testcontainers.version}</version>
 			<scope>test</scope>
 		</dependency>
-
-		<!-- Spring Boot Test -->
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
+			<groupId>net.java.dev.jna</groupId>
+			<artifactId>jna</artifactId>
+			<version>5.8.0</version> <!-- Check for the latest version that supports ARM64 -->
 		</dependency>
 
 	</dependencies>
