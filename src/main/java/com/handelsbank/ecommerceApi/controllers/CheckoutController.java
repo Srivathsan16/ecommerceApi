@@ -2,8 +2,10 @@ package com.handelsbank.ecommerceApi.controllers;
 
 import com.handelsbank.ecommerceApi.exceptions.CustomMessage;
 import com.handelsbank.ecommerceApi.exceptions.NoItemsToCheckoutException;
+import com.handelsbank.ecommerceApi.model.CheckoutResponse;
 import com.handelsbank.ecommerceApi.services.CheckoutService;
 import com.handelsbank.ecommerceApi.aop.RateLimit;
+import com.handelsbank.ecommerceApi.services.ICheckoutService;
 import com.handelsbank.ecommerceApi.utilities.Validator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,10 +23,10 @@ import java.util.Objects;
 public class CheckoutController {
 
     private static final Logger logger = LoggerFactory.getLogger(CheckoutController.class);
-    private final CheckoutService checkoutService;
+    private final ICheckoutService checkoutService;
     private final Validator<Long> productValidator;
 
-    public CheckoutController(CheckoutService checkoutService, Validator<Long> productValidator) {
+    public CheckoutController(ICheckoutService checkoutService, Validator<Long> productValidator) {
         this.checkoutService = checkoutService;
         this.productValidator = productValidator;
     }
@@ -32,13 +34,13 @@ public class CheckoutController {
     @PostMapping("/checkout")
     @RateLimit(requests = 5, duration = 3000)
     public ResponseEntity<?> checkout(@RequestBody List<Long> productIds) {
-        logger.info("Checking out with product IDs: {}", productIds);
+        logger.info("Checking out  product IDs: {}", productIds);
         // Validate product IDs over engineering ? check this part
         productValidator.validateList(productIds,
                 Objects::nonNull,
                 new NoItemsToCheckoutException(CustomMessage.NO_ITEMS_TO_CHECKOUT.getMessage()));
 
         BigDecimal total = checkoutService.calculateTotalPrice(productIds);
-        return ResponseEntity.ok(Map.of("price", total));
+        return ResponseEntity.ok(new CheckoutResponse(total));
     }
 }

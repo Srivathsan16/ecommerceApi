@@ -1,9 +1,5 @@
 package com.handelsbank.ecommerceApi.services;
 
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
 import com.handelsbank.ecommerceApi.entities.DiscountEntity;
 import com.handelsbank.ecommerceApi.entities.ProductEntity;
 import com.handelsbank.ecommerceApi.repository.DiscountRepository;
@@ -16,91 +12,119 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 public class CheckoutServiceTest {
 
     @Mock
     private ProductRepository productRepository;
-
     @Mock
     private DiscountRepository discountRepository;
-
     @InjectMocks
     private CheckoutService checkoutService;
 
     @BeforeEach
-    public void setup() {
+    void setUp() {
         MockitoAnnotations.openMocks(this);
     }
 
-    private ProductEntity createProduct(Long productId, BigDecimal price) {
+
+    private ProductEntity createProduct(Long id, String price) {
         ProductEntity product = new ProductEntity();
-        product.setId(productId);
-        product.setPrice(price);
+        product.setId(id);
+        product.setPrice(new BigDecimal(price));
         return product;
     }
 
-    private DiscountEntity createDiscount(int quantityRequired, BigDecimal discountedPrice) {
+
+    private DiscountEntity createDiscount(int requiredQuantity, String discountPrice) {
         DiscountEntity discount = new DiscountEntity();
-        discount.setQuantityRequired(quantityRequired);
-        discount.setDiscountedPrice(discountedPrice);
+        discount.setQuantityRequired(requiredQuantity);
+        discount.setDiscountedPrice(new BigDecimal(discountPrice));
         return discount;
     }
 
+
     @Test
-    public void whenValidProductIds_thenCalculateTotalPrice() {
-        Long productId = 1L;
-        ProductEntity product = createProduct(productId, new BigDecimal("100.00"));
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        when(discountRepository.findByProductId(productId)).thenReturn(List.of());
+    void whenCalculateTotalPrice_givenValidProducts_thenCalculateCorrectTotal() {
+        List<ProductEntity> products = Arrays.asList(createProduct(1L, "100.00"), createProduct(2L, "200.00"));
+        when(productRepository.findAllById(anySet())).thenReturn(products);
+        when(discountRepository.findByProductId(anyLong())).thenReturn(Collections.emptyList());
 
-        BigDecimal totalPrice = checkoutService.calculateTotalPrice(Arrays.asList(productId));
-
-        assertEquals(new BigDecimal("100.00"), totalPrice);
-        verify(productRepository).findById(productId);
-        verify(discountRepository).findByProductId(productId);
+        BigDecimal totalPrice = checkoutService.calculateTotalPrice(Arrays.asList(1L, 2L, 2L));
+        assertEquals(new BigDecimal("500.00"), totalPrice);
     }
 
+
     @Test
-    public void whenProductNotFound_thenThrowEntityNotFoundException() {
-        Long productId = 99L;
-        when(productRepository.findById(productId)).thenReturn(Optional.empty());
+    void whenCalculatePriceForProduct_givenNoDiscount_thenCalculateNormalPrice() {
+        ProductEntity product = createProduct(1L, "100.00");
+        Map.Entry<Long, Integer> entry = new AbstractMap.SimpleEntry<>(1L, 1);
+        when(discountRepository.findByProductId(1L)).thenReturn(Collections.emptyList());
 
-        EntityNotFoundException thrown = assertThrows(EntityNotFoundException.class,
-                () -> checkoutService.calculateTotalPrice(Arrays.asList(productId)));
-
-        assertTrue(thrown.getMessage().contains("Product with ID " + productId + " not found."));
+        BigDecimal price = checkoutService.calculatePriceForProduct(entry, product);
+        assertEquals(new BigDecimal("100.00"), price);
     }
 
+
     @Test
-    public void whenDiscountsApply_thenCalculateDiscountedPrice() {
-        Long productId = 1L;
-        ProductEntity product = createProduct(productId, new BigDecimal("100.00"));
-        DiscountEntity discount = createDiscount(2, new BigDecimal("150.00"));
+    void whenCalculateDiscountPrice_givenValidDiscount_thenApplyDiscount() {
+        ProductEntity product = createProduct(1L, "100.00");
+        DiscountEntity discount = createDiscount(1, "90.00");
 
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        when(discountRepository.findByProductId(productId)).thenReturn(List.of(discount));
-
-        BigDecimal totalPrice = checkoutService.calculateTotalPrice(Arrays.asList(productId, productId));
-
-        assertEquals(new BigDecimal("150.00"), totalPrice);  // 2 for 150 instead of 200
-        verify(discountRepository).findByProductId(productId);
+        BigDecimal discountPrice = checkoutService.calculateDiscountPrice(1, discount, product);
+        assertEquals(new BigDecimal("90.00"), discountPrice);
     }
 
+
     @Test
-    public void whenNoDiscountsApply_thenCalculateNormalPrice() {
-        Long productId = 1L;
-        ProductEntity product = createProduct(productId, new BigDecimal("100.00"));
+    void whenCalculateTotalPrice_givenMissingProduct_thenThrowException() {
+        when(productRepository.findAllById(anySet())).thenReturn(Collections.emptyList());
+        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, () -> checkoutService.calculateTotalPrice(Arrays.asList(1L)));
+        assertTrue(exception.getMessage().contains("Product with ID 1 not found"));
+    }
 
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        when(discountRepository.findByProductId(productId)).thenReturn(List.of());
+    // Tests for edge case where there are no products passed to calculateTotalPrice
+    @Test
+    void whenCalculateTotalPrice_givenEmptyProductList_thenReturnZero() {
+        BigDecimal totalPrice = checkoutService.calculateTotalPrice(Collections.emptyList());
+        assertEquals(BigDecimal.ZERO, totalPrice, "Total price should be zero when no products are provided.");
+    }
 
-        BigDecimal totalPrice = checkoutService.calculateTotalPrice(Arrays.asList(productId, productId));
+    // Tests for scenario when product exists but discount criteria are not met
+    @Test
+    void whenCalculatePriceForProduct_givenProductWithNoQualifyingDiscounts_thenReturnNormalPriceOnly() {
+        ProductEntity product = createProduct(1L, "100.00");
+        Map.Entry<Long, Integer> entry = new AbstractMap.SimpleEntry<>(1L, 1);
+        when(discountRepository.findByProductId(1L)).thenReturn(Collections.emptyList());
 
-        assertEquals(new BigDecimal("200.00"), totalPrice);
+        BigDecimal price = checkoutService.calculatePriceForProduct(entry, product);
+        assertEquals(new BigDecimal("100.00"), price, "Price should be normal when no discounts apply.");
+    }
+
+    // Tests for scenario when discounts apply but not enough quantity to activate them
+    @Test
+    void whenCalculatePriceForProduct_givenInsufficientQuantityForDiscount_thenReturnNormalPrice() {
+        ProductEntity product = createProduct(1L, "100.00");
+        DiscountEntity discount = createDiscount(3, "80.00");  // Discount requires buying 3
+        Map.Entry<Long, Integer> entry = new AbstractMap.SimpleEntry<>(1L, 2);
+        when(discountRepository.findByProductId(1L)).thenReturn(List.of(discount));
+
+        BigDecimal price = checkoutService.calculatePriceForProduct(entry, product);
+        assertEquals(new BigDecimal("200.00"), price, "Price should be normal when quantity is not enough for discounts.");
+    }
+
+    // Tests for scenario when the discount repository fails to fetch data
+    @Test
+    void whenDiscountRepositoryThrows_thenHandleExceptionGracefully() {
+        ProductEntity product = createProduct(1L, "100.00");
+        Map.Entry<Long, Integer> entry = new AbstractMap.SimpleEntry<>(1L, 1);
+        when(discountRepository.findByProductId(1L)).thenThrow(new RuntimeException("Database error"));
+
+        Exception exception = assertThrows(RuntimeException.class, () -> checkoutService.calculatePriceForProduct(entry, product));
+        assertEquals("Database error", exception.getMessage(), "Should handle and relay repository errors.");
     }
 }
-

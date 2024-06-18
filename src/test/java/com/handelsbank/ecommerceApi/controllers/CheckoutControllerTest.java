@@ -1,10 +1,13 @@
 package com.handelsbank.ecommerceApi.controllers;
 
-
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.handelsbank.ecommerceApi.controllers.CheckoutController;
+import com.handelsbank.ecommerceApi.exceptions.NoItemsToCheckoutException;
+import com.handelsbank.ecommerceApi.model.CheckoutResponse;
+import com.handelsbank.ecommerceApi.services.ICheckoutService;
+import com.handelsbank.ecommerceApi.utilities.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -12,31 +15,24 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.ResponseEntity;
 
-import com.handelsbank.ecommerceApi.exceptions.CustomMessage;
-import com.handelsbank.ecommerceApi.exceptions.NoItemsToCheckoutException;
-import com.handelsbank.ecommerceApi.services.CheckoutService;
-import com.handelsbank.ecommerceApi.utilities.Validator;
-
 import java.math.BigDecimal;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 public class CheckoutControllerTest {
 
     @Mock
-    private CheckoutService checkoutService;
+    private ICheckoutService checkoutService;
 
     @Mock
     private Validator<Long> productValidator;
 
-    @InjectMocks
     private CheckoutController checkoutController;
 
     @BeforeEach
     public void setup() {
         MockitoAnnotations.openMocks(this);
+        checkoutController = new CheckoutController(checkoutService, productValidator);
     }
 
     @Test
@@ -65,5 +61,40 @@ public class CheckoutControllerTest {
         assertEquals("Service failure", exception.getMessage());
     }
 
-}
+    @Test
+    public void whenEmptyProductIds_thenExpectNoItemsToCheckoutException() {
+        List<Long> productIds = Arrays.asList();
+        doThrow(new NoItemsToCheckoutException("No items to checkout"))
+                .when(productValidator).validateList(eq(productIds), any(), any());
 
+        NoItemsToCheckoutException exception = assertThrows(NoItemsToCheckoutException.class, () -> {
+            checkoutController.checkout(productIds);
+        });
+
+        assertEquals("No items to checkout", exception.getMessage());
+    }
+
+    @Test
+    public void whenValidProductIds_thenCalculateTotalPrice() {
+        List<Long> productIds = Arrays.asList(1L, 2L);
+        BigDecimal expectedTotal = new BigDecimal("300.00");
+        when(checkoutService.calculateTotalPrice(productIds)).thenReturn(expectedTotal);
+
+        ResponseEntity<?> response = checkoutController.checkout(productIds);
+        assertNotNull(response);
+        assertEquals(200, response.getStatusCodeValue());
+        assertTrue(response.getBody() instanceof CheckoutResponse);
+        assertEquals(expectedTotal, ((CheckoutResponse) response.getBody()).price());
+    }
+
+    @Test
+    public void whenEmptyProductIds_thenReturnZero() {
+        List<Long> productIds = Arrays.asList();
+        when(checkoutService.calculateTotalPrice(productIds)).thenReturn(BigDecimal.ZERO);
+
+        ResponseEntity<?> response = checkoutController.checkout(productIds);
+        assertNotNull(response);
+        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(BigDecimal.ZERO, ((CheckoutResponse) response.getBody()).price());
+    }
+}

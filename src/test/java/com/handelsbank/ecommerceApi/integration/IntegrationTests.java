@@ -5,6 +5,7 @@ package com.handelsbank.ecommerceApi.integration;
 import com.handelsbank.ecommerceApi.repository.DiscountRepository;
 import com.handelsbank.ecommerceApi.repository.ProductRepository;
 import com.handelsbank.ecommerceApi.services.CheckoutService;
+import com.handelsbank.ecommerceApi.services.ICheckoutService;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,7 @@ public class IntegrationTests {
             .withPassword("test");
 
     @Autowired
-    private CheckoutService checkoutService;
+    private ICheckoutService checkoutService;
 
 
     @BeforeEach
