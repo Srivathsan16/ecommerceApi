@@ -87,14 +87,14 @@ public class CheckoutServiceTest {
         assertTrue(exception.getMessage().contains("Product with ID 1 not found"));
     }
 
-    // Tests for edge case where there are no products passed to calculateTotalPrice
+
     @Test
     void whenCalculateTotalPrice_givenEmptyProductList_thenReturnZero() {
         BigDecimal totalPrice = checkoutService.calculateTotalPrice(Collections.emptyList());
         assertEquals(BigDecimal.ZERO, totalPrice, "Total price should be zero when no products are provided.");
     }
 
-    // Tests for scenario when product exists but discount criteria are not met
+
     @Test
     void whenCalculatePriceForProduct_givenProductWithNoQualifyingDiscounts_thenReturnNormalPriceOnly() {
         ProductEntity product = createProduct(1L, "100.00");
@@ -105,7 +105,7 @@ public class CheckoutServiceTest {
         assertEquals(new BigDecimal("100.00"), price, "Price should be normal when no discounts apply.");
     }
 
-    // Tests for scenario when discounts apply but not enough quantity to activate them
+
     @Test
     void whenCalculatePriceForProduct_givenInsufficientQuantityForDiscount_thenReturnNormalPrice() {
         ProductEntity product = createProduct(1L, "100.00");
@@ -117,7 +117,7 @@ public class CheckoutServiceTest {
         assertEquals(new BigDecimal("200.00"), price, "Price should be normal when quantity is not enough for discounts.");
     }
 
-    // Tests for scenario when the discount repository fails to fetch data
+
     @Test
     void whenDiscountRepositoryThrows_thenHandleExceptionGracefully() {
         ProductEntity product = createProduct(1L, "100.00");
